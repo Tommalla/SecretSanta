@@ -19,19 +19,21 @@ def matching_ok(people, targets):
 
 
 def mail_auth():
-    user = input('Gmail username:')
-    password = getpass.getpass()
     smtp_host = 'smtp.gmail.com'
     smtp_port = 465
     server = smtplib.SMTP_SSL(smtp_host, smtp_port)
     server.ehlo()
+    #server.starttls()
+    user = input('Gmail username:')
+    password = getpass.getpass()
     server.login(user, password)
     return (user, server)
 
 
 def send_mail(server, user, to, message):
+    fromaddr = 'secret_santa@noreply.org'
     tolist = [to]
-    sub = 'Secret Santa'
+    sub = 'Secret Santa 2'
 
     msg = MIMEMultipart()
     msg['From'] = fromaddr
@@ -56,15 +58,15 @@ def main():
     while not matching_ok(people, targets):
         random.shuffle(targets)
 
-    print('Finished shuffling, sending emails...')
+    print('Finished shuffling, preparing emails...')
 
-    user, server = mail_auth()
     total_people = len(people)
     idx = 1
+    to_send = []
     for person, target in zip (people, targets):
         print('%d/%d' % (idx, total_people))
         idx += 1
-        regex = r'(\w+) ([a-zA-z ]+) ([^@]+@[^@]+)'
+        regex = r'(\w+) ([\w ]+) ([^@]+@[^@]+)'
         m_person = re.match(regex, person)
         m_target = re.match(regex, target)
         person_firstname = m_person.group(1)
@@ -72,7 +74,17 @@ def main():
         target_fullname = m_target.group(1) + ' ' + m_target.group(2)
         rendered_template = template.replace('<PERSON_FIRSTNAME>', person_firstname)\
                                     .replace('<TARGET_NAME>', target_fullname)
-        send_mail(server, user, person_mail, rendered_template)
+        to_send.append((person_mail, rendered_template))
+
+    print('Finished preparing emails, sending...')
+
+    #print(to_send)
+    user, server = mail_auth()
+    idx = 1
+    for email, msg in to_send:
+        print('%d/%d' % (idx, total_people))
+        idx += 1
+        send_mail(server, user, email, msg)
 
     server.quit()
 
